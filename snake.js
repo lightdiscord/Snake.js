@@ -54,7 +54,7 @@ class Snake {
     }
 
     remove () {
-        this.queue.pop()
+        return this.queue.pop()
     }
 }
 
@@ -62,7 +62,7 @@ function randomCase(grid, include = [CellType.Empty, CellType.Snake, CellType.Bo
     const found = []
     grid.grid.forEach((row, x) => {
         row.forEach((_, y) => {
-        if (include.includes(grid.get({x, y}))) found.push({x, y})
+            if (include.includes(grid.get(x, y))) found.push({x, y})
         })
     })
     return found[~~Math.random()*found.length]
@@ -80,7 +80,7 @@ class Game {
         this.keyState = {}
 
         document.addEventListener('keydown', event => {
-        this.keyState[event.keyCode] = true
+            this.keyState[event.keyCode] = true
         })
         document.addEventListener('keyup', event => {
             delete this.keyState[event.keyCode]
@@ -103,44 +103,73 @@ class Game {
         this.grid.set(CellType.Boost, x, y)
     }
 
-    loop () {
-        this.update()
-        this.draw()
-
-        window.requestAnimationFrame(this.loop, this.canvas)
-    }
-
     update () {
         this.frames++
 
-        if (this.keyState[KEY_LEFT] && this.snake.direction !== RIGHT) this.snake.direction = LEFT
-        if (this.keyState[KEY_UP] && this.snake.direction !== DOWN) this.snake.direction = UP
-        if (this.keyState[KEY_RIGHT] && this.snake.direction !== LEFT) this.snake.direction = RIGHT
-        if (this.keyState[KEY_DOWN] && this.snake.direction !== UP) this.snake.direction = DOWN
+        if (this.keyState[Keys.Left] && this.snake.direction !== Directions.Right) this.snake.direction = Directions.Left
+        if (this.keyState[Keys.Up] && this.snake.direction !== Directions.Down) this.snake.direction = Directions.Up
+        if (this.keyState[Keys.Right] && this.snake.direction !== Directions.Left) this.snake.direction = Directions.Right
+        if (this.keyState[Keys.Down] && this.snake.direction !== Directions.Up) this.snake.direction = Directions.Down
 
-        if (this.frames%5 != 0) return
+        if (this.frames%5 == 0) {
 
-        const {x,y} = this.snake.last
+            let {x,y} = this.snake.last
 
-        switch (this.snake.direction) {
-        case Directions.Left: x-- break
-        case Directions.Up: y-- break
-        case Directions.Right: x++ break
-        case Directions.Down: y++ break
+            switch (this.snake.direction) {
+                case Directions.Left: 
+                    x--
+                    break
+                case Directions.Up: 
+                    y--
+                    break
+                case Directions.Right: 
+                    x++
+                    break
+                case Directions.Down: 
+                    y++
+                    break
+            }
+
+            if (0 > x || x > this.grid.width - 1
+            || 0 > y || y > this.grid.height - 1
+            || this.grid.get(x,y) == CellType.Snake) return this.init()
+
+            if (this.grid.get(x,y) == CellType.Boost) this.randomPower()
+            else {
+                const {x: tx, y: ty} = this.snake.remove()
+                this.grid.set(CellType.Empty, tx, ty)
+            }
+            
+            this.grid.set(CellType.Snake, x, y)
+            this.snake.insert(x, y)
         }
+    }
 
-        if (0 > x || x > grid-width -1
-        || 0 > y || y > grid.height -1
-        || this.grid.get(x,y) == CellType.Snake) return this.init()
-
-        if (grid.get(x,y) == CellType.Boost) this.randomPower()
-        else {
-        const {_x:x,_y:y} = this.snake.remove()
-        this.grid.set(CellType.Empty, _x, _y)
-        }
-
-        this.grid.set(CellType.Snake, x, y)
-        this.snake.insert(x, y)
+    draw () {
+        const tw = this.canvas.width/this.grid.width
+        const th = this.canvas.height/this.grid.height
+        const _ = [...Array(this.grid.width)].map((_,x) => [...Array(this.grid.height)].map((v,y) => {
+            switch (this.grid.get(x,y)) {
+                case CellType.Empty: 
+                    this.context.fillStyle = "#34495e"
+                    break
+                case CellType.Snake: 
+                    this.context.fillStyle = "#ecf0f1"
+                    break
+                case CellType.Boost: 
+                    this.context.fillStyle = "#e74c3c"
+                    break
+            }
+            this.context.fillRect(x*tw, y*th, tw, th)
+        }))
+    }
+    
+    loop () {
+        this.update()
+        this.draw()
+        window.requestAnimationFrame(() => {
+            this.loop()
+        }, this.canvas)
     }
 }
 
