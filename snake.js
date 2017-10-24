@@ -38,6 +38,16 @@ class Grid {
     get (x, y) {
         return this.grid[x][y]
     }
+
+    randomCase(include = [CellType.Empty, CellType.Snake, CellType.Boost]) {
+        const found = []
+        this.grid.forEach((row, x) => {
+            row.forEach((_, y) => {
+                if (include.includes(this.get(x, y))) found.push({x, y})
+            })
+        })
+        return found[~~(Math.random()*found.length)]
+    }
 }
 
 class Snake {
@@ -56,16 +66,6 @@ class Snake {
     remove () {
         return this.queue.pop()
     }
-}
-
-function randomCase(grid, include = [CellType.Empty, CellType.Snake, CellType.Boost]) {
-    const found = []
-    grid.grid.forEach((row, x) => {
-        row.forEach((_, y) => {
-            if (include.includes(grid.get(x, y))) found.push({x, y})
-        })
-    })
-    return found[~~Math.random()*found.length]
 }
 
 class Game {
@@ -99,7 +99,7 @@ class Game {
     }
 
     randomPower () {
-        const {x,y} = randomCase(this.grid, [CellType.Empty])
+        const {x,y} = this.grid.randomCase([CellType.Empty])
         this.grid.set(CellType.Boost, x, y)
     }
 
@@ -134,14 +134,18 @@ class Game {
             || 0 > y || y > this.grid.height - 1
             || this.grid.get(x,y) == CellType.Snake) return this.init()
 
-            if (this.grid.get(x,y) == CellType.Boost) this.randomPower()
-            else {
-                const {x: tx, y: ty} = this.snake.remove()
-                this.grid.set(CellType.Empty, tx, ty)
+            let tail
+            if (this.grid.get(x,y) == CellType.Boost) {
+                tail = {x,y}
+                this.randomPower()
+            } else {
+                tail = this.snake.remove()
+                this.grid.set(CellType.Empty, tail.x, tail.y)
+                tail = {x,y}
             }
             
-            this.grid.set(CellType.Snake, x, y)
-            this.snake.insert(x, y)
+            this.grid.set(CellType.Snake, tail.x, tail.y)
+            this.snake.insert(tail.x, tail.y)
         }
     }
 
@@ -173,4 +177,4 @@ class Game {
     }
 }
 
-new Game()
+console.log(new Game())
