@@ -1,180 +1,147 @@
-/* Grid */
-var ROWS = 20, COLS = 20;
-/* Cell IDs */
-var EMPTY = 0, SNAKE = 1, POWER = 2;
-/* Direction */
-var LEFT = 0, UP = 1, RIGHT = 2, DOWN = 3;
-/* Keys */
-var KEY_LEFT = 37, KEY_UP = 38, KEY_RIGHT = 39, KEY_DOWN = 40;
-
-class Grid {
-    constructor(d, col, row) {
-        this.width = col;
-        this.height = row;
-        this._grid = [];
-
-        for (var x=0; x < col; x++) {
-            this._grid.push([])
-            for (var y=0; y < row; y++) {
-                this._grid[x].push(d);
-            }
-        }
+const Grid = {
+    Rows: 20,
+    Cols: 20
+  }
+  
+  const CellType = {
+    Empty: 0,
+    Snake: 1,
+    Boost: 2
+  }
+  
+  const Directions = {
+    Left: 0,
+    Up: 1,
+    Right: 2,
+    Down: 3
+  }
+  
+  const Keys = {
+    Left: 37,
+    Up: 38,
+    Right: 39,
+    Down: 40
+  }
+  
+  class Grid {
+    constructor (def, col, row) {
+      this.width = col
+      this.height = row
+      
+      this.grid = [...Array(this.width)].map(() => [...Array(this.height)].map(() => def))
     }
-
-    set(val, x, y) {
-        this._grid[x][y] = val;
+    
+    set (value, x, y) {
+      this.grid[x][y] = value
     }
-
-    get(x, y) {
-        return this._grid[x][y];
+    
+    get (x, y) {
+      return this.grid[x][y]
     }
-}
-
-class Snake {
-    constructor(dir, x, y) {
-        this.direction = null;
-        this.last = null;
-        this._queue = null;
-        
-        this.direction = dir;
-        this._queue = [];
-        this.insert(x, y);
+  }
+  
+  class Snake {
+    constructor (direction, x, y) {
+      this.direction = direction
+      this.last = null
+      this.queue = []
+      this.insert(x, y)
     }
-
-    insert(x, y) {
-        this._queue.unshift({x:x, y:y});
-        this.last = this._queue[0];
+    
+    insert (x, y) {
+      this.queue.unshift({x, y})
+      this.last = this.queue[0]
     }
-
-    remove() {
-        return this._queue.pop();
+    
+    remove () {
+      this.queue.pop()
     }
-}
-
-function randomPower() {
-    var empty = [];
-    for (var x=0; x < grid.width; x++) {
-        for (var y=0; y < grid.height; y++) {
-            if(grid.get(x, y) === EMPTY) {
-                empty.push({x:x, y:y});
-            }
-        }
+  }
+  
+  function randomCase(grid, include = [CellType.Empty, CellType.Snake, CellType.Boost]) {
+    const found = []
+    grid.grid.forEach((row, x) => {
+      row.forEach((_, y) => {
+        if (include.includes(grid.get({x, y}))) found.push({x, y})
+      })
+    })
+    return found[~~Math.random()*found.length]
+  }
+  
+  class Game {
+    constructor () {
+      this.canvas = document.createElement('canvas')
+      this.canvas.width = Grid.Cols*20
+      this.canvas.height = Grid.Rows*20
+      this.context = this.canvas.getContext('2d')
+      document.body.appendChild(this.canvas)
+  
+      this.frames = 0
+      this.keyState = {}
+  
+      document.addEventListener('keydown', event => {
+        this.keyState[event.keyCode] = true
+      })
+      document.addEventListener('keyup', event => {
+          delete this.keyState[event.keyCode]
+      })
+  
+      this.init()
+      this.loop()
     }
-    var randpos = empty[Math.floor(Math.random()*empty.length)];
-    grid.set(POWER, randpos.x, randpos.y);
-}
-
-/* Game */
-var canvas, ctx, keyState, frames, snake, grid;
-
-function main() {
-    canvas = document.createElement("canvas");
-    canvas.width = COLS*20;
-    canvas.height = ROWS*20
-    ctx = canvas.getContext("2d");
-    document.body.appendChild(canvas);
-
-    frames = 0;
-    keyState = {};
-    document.addEventListener("keydown", function(evt) {
-        keyState[evt.keyCode] = true;
-    });
-    document.addEventListener("keyup", function(evt) {
-        delete keyState[evt.keyCode]
-    });
-
-    init();
-    loop();
-}
-
-function init() {
-    grid = new Grid(EMPTY, COLS, ROWS);    
-    var sp = {x:Math.floor(COLS/2), y:ROWS-1};
-    snake = new Snake(UP, sp.x, sp.y);
-    grid.set(SNAKE, sp.x, sp.y);
-
-    randomPower();
-}
-
-function loop() {
-    update();
-    draw();
-
-    window.requestAnimationFrame(loop, canvas);
-}
-
-function update() {
-    frames++;
-
-    if (keyState[KEY_LEFT] && snake.direction !== RIGHT) 
-        snake.direction = LEFT;
-    if (keyState[KEY_UP] && snake.direction !== DOWN) 
-        snake.direction = UP;
-    if (keyState[KEY_RIGHT] && snake.direction !== LEFT) 
-        snake.direction = RIGHT;
-    if (keyState[KEY_DOWN] && snake.direction !== UP) 
-        snake.direction = DOWN;
-
-    if (frames%5 === 0) {
-        var nx = snake.last.x;
-        var ny = snake.last.y;
-        
-        switch (snake.direction) {
-            case LEFT:
-                nx--;
-                break;
-            case UP:
-                ny--;
-                break;
-            case RIGHT:
-                nx++;
-                break;
-            case DOWN:
-                ny++;
-                break;
-        }
-
-        if (0 > nx || nx > grid.width - 1 ||
-            0 > ny || ny > grid.height - 1 || 
-            grid.get(nx, ny) === SNAKE){
-                return init();
-            }
-
-        if (grid.get(nx, ny) === POWER) {
-            var tail = {x:nx, y:ny};
-            randomPower();
-        } else {
-            var tail = snake.remove();
-            grid.set(EMPTY, tail.x, tail.y);
-            tail.x = nx;
-            tail.y = ny;
-        }
-        grid.set(SNAKE, tail.x, tail.y);
-
-        snake.insert(tail.x, tail.y);
+    
+    init () {
+      this.grid = new Grid(CellType.Empty, Grid.Cols, Grid.Rows)
+      const {x, y} = { x: ~~(Grid.Cols/2), y: Grid.Rows-1 }
+      this.snake = new Snake(Directions.Up, x, y)
+      this.grid.set(CellType.Snake, x, y)
+      this.randomPower()
     }
-}
-
-function draw() {
-    var tw = canvas.width/grid.width;
-    var th = canvas.height/grid.height;
-
-    for (var x=0; x < grid.width; x++) {
-        for (var y=0; y < grid.height; y++) {
-            switch(grid.get(x, y)) {
-                case EMPTY:
-                    ctx.fillStyle = "#34495e";
-                    break;
-                case SNAKE:
-                    ctx.fillStyle = "#ecf0f1";
-                    break;
-                case POWER:
-                    ctx.fillStyle = "#e74c3c";
-                    break;
-            }
-            ctx.fillRect(x*tw, y*th, tw, th)
-        }
+  
+    randomPower () {
+        const {x,y} = randomCase(this.grid, [CellType.Empty])
+        this.grid.set(CellType.Boost, x, y)
     }
-}
-
-main();
+  
+    loop () {
+      this.update()
+      this.draw()
+  
+      window.requestAnimationFrame(this.loop, this.canvas)
+    }
+  
+    update () {
+      this.frames++
+  
+      if (this.keyState[KEY_LEFT] && this.snake.direction !== RIGHT) this.snake.direction = LEFT
+      if (this.keyState[KEY_UP] && this.snake.direction !== DOWN) this.snake.direction = UP
+      if (this.keyState[KEY_RIGHT] && this.snake.direction !== LEFT) this.snake.direction = RIGHT
+      if (this.keyState[KEY_DOWN] && this.snake.direction !== UP) this.snake.direction = DOWN
+  
+      if (this.frames%5 != 0) return
+  
+      const {x,y} = this.snake.last
+  
+      switch (this.snake.direction) {
+        case Directions.Left: x-- break
+        case Directions.Up: y-- break
+        case Directions.Right: x++ break
+        case Directions.Down: y++ break
+      }
+  
+      if (0 > x || x > grid-width -1
+        || 0 > y || y > grid.height -1
+        || this.grid.get(x,y) == CellType.Snake) return this.init()
+  
+      if (grid.get(x,y) == CellType.Boost) this.randomPower()
+      else {
+        const {_x:x,_y:y} = this.snake.remove()
+        this.grid.set(CellType.Empty, _x, _y)
+      }
+  
+      this.grid.set(CellType.Snake, x, y)
+      this.snake.insert(x, y)
+    }
+  }
+  
+  new Game()
